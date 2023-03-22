@@ -1,8 +1,21 @@
+from imutils.video import VideoStream
 import cv2
-for i in range(10):
-    cap = cv2.VideoCapture(i)
-    if cap.isOpened():
-        print(f"Camera device {i} is available")
-    else:
-        print(f"Camera device {i} is not available")
-    cap.release()
+
+# initialize the VideoStream object with the default webcam
+vs = VideoStream(usePiCamera=True).start()
+
+# loop over frames from the video stream
+while True:
+    # grab the frame from the threaded video stream
+    frame = vs.read()
+
+    cv2.imshow("Frame", frame)
+
+    # if the 'q' key is pressed, stop the loop
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord("q"):
+        break
+
+# cleanup the camera and close any open windows
+vs.stop()
+cv2.destroyAllWindows()

@@ -156,9 +156,9 @@ face_recognizer.train(faces, np.array(labels))
 print("Predicting images...")
 
 #load test images
-test_img1 = cv2.imread("test-data/test1.jpg")
+test_img1 = cv2.imread("test-data/s1/test1.jpg")
 test_img1 = cv2.resize(test_img1, (416,416))
-test_img2 = cv2.imread("test-data/test2.jpg")
+test_img2 = cv2.imread("test-data/s2/test2.jpg")
 test_img2 = cv2.resize(test_img2, (416,416))
 
 #perform a prediction
