@@ -140,10 +140,9 @@ faces, labels = prepare_training_data("training-data")
 image_size = (416,416)
 for face in faces: 
     face = cv2.resize(face, image_size)
-    print("Shape: {}", face.shape)
-print("Data prepared")
 
-subjects = ["", "Random Guy", "Elvis Presley"]
+print("Labels:", labels)
+subjects = ["", "Robert Downey Jr.", "Elvis Presley"]
 
 #print total faces and labels
 print("Total faces: ", len(faces))
@@ -156,9 +155,9 @@ face_recognizer.train(faces, np.array(labels))
 print("Predicting images...")
 
 #load test images
-test_img1 = cv2.imread("test-data/s1/test1.jpg")
+test_img1 = cv2.imread("test-data/s1/robert1.jpg")
 test_img1 = cv2.resize(test_img1, (416,416))
-test_img2 = cv2.imread("test-data/s2/test2.jpg")
+test_img2 = cv2.imread("test-data/s2/elvis.jpg")
 test_img2 = cv2.resize(test_img2, (416,416))
 
 #perform a prediction
@@ -176,8 +175,8 @@ ax1.imshow(cv2.cvtColor(predicted_img1, cv2.COLOR_BGR2RGB))
 ax2.imshow(cv2.cvtColor(predicted_img2, cv2.COLOR_BGR2RGB))
 
 #display both images
-cv2.imshow("Tom cruise test", predicted_img1)
-cv2.imshow("Shahrukh Khan test", predicted_img2)
+cv2.imshow("Test one", predicted_img1)
+cv2.imshow("Test two", predicted_img2)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
 cv2.waitKey(1)
