@@ -1,4 +1,8 @@
 from sklearn.svm import LinearSVC
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.neural_network import MLPClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from scipy.stats import mode
 from skimage import feature
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 import os
@@ -44,7 +48,7 @@ def prepare_data(data_folder_path):
             
     return images, labels
 
-def prepare_train(data_folder_path):
+def prepare_test(data_folder_path):
     hog_descriptions = []
     hog_images = []
     labels = []
@@ -96,24 +100,60 @@ def apply_hog_on_images(images):
         hog_images.append(hog_img)
     return hog_descriptions 
 
+def create_mlp_predictions(train_hog_desc, train_labels, test_hog_desc, true_labels):
+    acc = []
+    for i in range(1,5):
+        pred_labels = []
+        ann = MLPClassifier(hidden_layer_sizes=(i), solver='lbfgs').fit(train_hog_desc, train_labels)
+        for hog in test_hog_desc:
+            pred = ann.predict(hog.reshape(1, -1))[0]
+            pred_labels.append(pred)
+        acc.append(accuracy_score(true_labels, pred_labels))
+
+    print("Minima:  ", round(min(acc),4))
+    print("Maxima:  ", round(max(acc),4))
+    print("Média:  ", round(np.mean(acc),4))
+    print("Mediana:  ", round(np.median(acc),4))
+    print("Moda:  ", round(mode(acc, keepdims=True).mode[0],4))
+    print("Variância:  ", round(np.var(acc),4))
+    print("Desvio Padrão:  ", round(np.std(acc),4))
+    return
+
+# person for each label
 labels_name = ["", "Robert Downey Jr.", "Elvis Presley"]
+
+# train data
 train_images, train_labels = prepare_data("training-data")
-hog_descriptions = apply_hog_on_images(train_images)
+train_hog_desc = apply_hog_on_images(train_images)
 
-# train Linear SVC 
+
+# create model of each classification method
 print('Training on train images...')
+
+# Support Vector Machine (SVM)
 svm_model = LinearSVC(random_state=42, tol=1e-5)
+svm_model.fit(train_hog_desc, train_labels)
 
-# check the shape of your label array
-svm_model.fit(hog_descriptions, train_labels)
+# K-Nearest Neighbors (KNN)
+knn_model = KNeighborsClassifier(n_neighbors=10)
+knn_model.fit(train_hog_desc, train_labels)
 
-# test images
-test_images, test_labels = prepare_data("test-data")
-pred_labels = []
+# Multilayer perceptron (MLP)
+mlp_model = MLPClassifier(hidden_layer_sizes=(100,), max_iter=500, random_state=42)
+mlp_model.fit(train_hog_desc, train_labels)
 
-test_hog_desc, test_hog_img, true_labels = prepare_train("training-data")
+# LDA
+# lda_model = LinearDiscriminantAnalysis(solver='lsqr').fit(hog_descriptions, train_labels)
+# lda_hog_descriptions = lda_model.transform(hog_descriptions)
+
+# Prepare test images
+test_hog_desc, test_hog_img, true_labels = prepare_test("test-data")
+
+# MLP with desired number of neurons
+# create_mlp_predictions(train_hog_desc, train_labels, test_hog_desc, true_labels)
 
 # make the predictions
+pred_labels = []
 for hog in test_hog_desc:
     pred = svm_model.predict(hog.reshape(1, -1))[0]
     pred_labels.append(pred)
@@ -130,6 +170,9 @@ print("Confusion Matrix:\n", cm)
 f1 = f1_score(true_labels, pred_labels, average='micro')
 print("F1 score:", f1)
 
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
 """ 
 hog_image = test_hog_img.astype('float64')
 # show the HOG image
@@ -140,5 +183,3 @@ cv2.putText(test_hog_img, prediction_labels[pred], (20, 40), cv2.FONT_HERSHEY_SI
 cv2.imwrite(f"outputs/hog_2.jpg", hog_image*255.) # multiply by 255. to bring to OpenCV pixel range
 cv2.imwrite(f"outputs/pred_2.jpg", test_hog_img) 
 """
-cv2.waitKey(0)
-cv2.destroyAllWindows()
