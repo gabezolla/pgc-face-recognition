@@ -2,6 +2,8 @@ import cv2
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import statistics
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 
 #function to detect face using OpenCV
 def detect_face(img):
@@ -19,7 +21,7 @@ def detect_face(img):
     #if no faces are detected then return original img
     if (len(faces) == 0):
         return None, None
-    
+
     #under the assumption that there will be only one face,
     #extract the face area
     (x, y, w, h) = faces[0]
@@ -34,6 +36,8 @@ def prepare_training_data(data_folder_path):
     #------STEP-1--------
     #get the directories (one directory for each subject) in data folder
     dirs = os.listdir(data_folder_path)
+    totalFaces = 0
+    undetectedFaces = 0
     
     #list to hold all subject faces
     faces = []
@@ -65,7 +69,7 @@ def prepare_training_data(data_folder_path):
         #go through each image name, read image, 
         #detect face and add face to list of faces
         for image_name in subject_images_names:
-            
+                        
             #ignore system files like .DS_Store
             if image_name.startswith("."):
                 continue;
@@ -81,24 +85,72 @@ def prepare_training_data(data_folder_path):
             #display an image window to show the image 
             cv2.imshow("Training on image...", image)
             cv2.waitKey(100)
-            
+                        
             #detect face
             face, rect = detect_face(image)
-            
+                        
             #------STEP-4--------
             #for the purpose of this tutorial
             #we will ignore faces that are not detected
             if face is not None:
+                totalFaces += 1
                 #add face to list of faces
                 faces.append(face)
                 #add label for this face
                 labels.append(label)
+            else:
+                undetectedFaces += 1
             
     cv2.destroyAllWindows()
     cv2.waitKey(1)
     cv2.destroyAllWindows()
     
-    return faces, labels
+    return faces, labels, totalFaces, undetectedFaces
+
+def prepare_test(data_folder_path):
+    true_labels = []
+    pred_labels = []
+    pred_distance = []
+    totalFaces = 0
+    undetectedFaces = 0
+    
+    # get the directories (one directory for each subject) in data folder
+    dirs = os.listdir(data_folder_path)
+
+    for dir_name in dirs:        
+        # ignore folders that don't start with 's'
+        if not dir_name.startswith("s"):
+            continue;
+            
+        # extract the label from each folder
+        label = int(dir_name.replace("s", ""))
+        
+        # get full path
+        subject_dir_path = data_folder_path + "/" + dir_name
+        
+        # get all image names inside complete path
+        subject_images_names = os.listdir(subject_dir_path)
+        
+        # for each image, detect face and add face to list of faces
+        for image_name in subject_images_names:
+            
+            # ignore system files like .DS_Store
+            if image_name.startswith("."):
+                continue;
+            
+            # build image path
+            image_path = subject_dir_path + "/" + image_name
+            test_img1 = cv2.imread(image_path)
+            pred_img, pred_label = predict(test_img1)
+
+            if pred_label is not None:
+                pred_labels.append(pred_label[0])
+                pred_distance.append(pred_label[1])
+                true_labels.append(label)
+            else:
+                continue;
+
+    return pred_labels, true_labels, totalFaces, undetectedFaces, pred_distance
 
 #function to draw rectangle on image 
 #according to given (x, y) coordinates and 
@@ -121,52 +173,48 @@ def predict(test_img):
     #detect face from the image
     face, rect = detect_face(img)
 
+    if face is None:
+        return None, None
+
     #predict the image using our face recognizer 
-    label = face_recognizer.predict(face)
-    print("Label {}", label)
+    test_label = face_recognizer.predict(face)
+        
+    return img, test_label
 
-    #get name of respective label returned by face recognizer
-    label_text = subjects[label[0]]
-    
-    #draw a rectangle around face detected
-    draw_rectangle(img, rect)
-    #draw name of predicted person
-    draw_text(img, label_text, rect[0], rect[1]-5)
-    
-    return img
-
-print("Preparing data...")
-faces, labels = prepare_training_data("training-data")
+faces, labels, train_total, train_undetected = prepare_training_data("training-data")
 image_size = (416,416)
 for face in faces: 
     face = cv2.resize(face, image_size)
 
-print("Labels:", labels)
-subjects = ["", "Robert Downey Jr.", "Elvis Presley"]
-
-#print total faces and labels
-print("Total faces: ", len(faces))
-print("Total labels: ", len(labels))
-
-#train EigenFaceRecognizer 
+#train LBPHFaceRecognizer 
 face_recognizer = cv2.face.LBPHFaceRecognizer_create()
 face_recognizer.train(faces, np.array(labels))
 
-print("Predicting images...")
+pred_labels, true_labels, test_total, test_undetected, pred_distance = prepare_test("test-data")
 
-#load test images
-test_img1 = cv2.imread("test-data/s1/robert1.jpg")
-test_img1 = cv2.resize(test_img1, (416,416))
-test_img2 = cv2.imread("test-data/s2/elvis.jpg")
-test_img2 = cv2.resize(test_img2, (416,416))
+# detection percentage
+detectionPercentage = (train_total + test_total - train_undetected - test_undetected)*100/(train_total + test_total)
+print("Detection percentage:", detectionPercentage)
 
-#perform a prediction
-predicted_img1 = predict(test_img1)
-predicted_img2 = predict(test_img2)
-print("Prediction complete")
+# distance average
+distanceAverage = statistics.mean(pred_distance)
+print("Distance average:", distanceAverage)
 
+# calculate accuracy score
+accuracy = accuracy_score(true_labels, pred_labels)
+print("Accuracy:", accuracy)
+
+# calculate confusion matrix
+cm = confusion_matrix(true_labels, pred_labels)
+print("Confusion Matrix:\n", cm)
+
+# calculate f1 score
+f1 = f1_score(true_labels, pred_labels, average='micro')
+print("F1 score:", f1)
+
+"""
 #create a figure of 2 plots (one for each test image)
-f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+#f, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
 
 #display test image1 result
 ax1.imshow(cv2.cvtColor(predicted_img1, cv2.COLOR_BGR2RGB))
@@ -181,3 +229,4 @@ cv2.waitKey(0)
 cv2.destroyAllWindows()
 cv2.waitKey(1)
 cv2.destroyAllWindows()
+"""

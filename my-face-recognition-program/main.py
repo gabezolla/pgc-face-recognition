@@ -102,7 +102,7 @@ def apply_hog_on_images(images):
 
 def create_mlp_predictions(train_hog_desc, train_labels, test_hog_desc, true_labels):
     acc = []
-    for i in range(1,5):
+    for i in range(1,50):
         pred_labels = []
         ann = MLPClassifier(hidden_layer_sizes=(i), solver='lbfgs').fit(train_hog_desc, train_labels)
         for hog in test_hog_desc:
@@ -125,7 +125,6 @@ labels_name = ["", "Robert Downey Jr.", "Elvis Presley"]
 # train data
 train_images, train_labels = prepare_data("training-data")
 train_hog_desc = apply_hog_on_images(train_images)
-
 
 # create model of each classification method
 print('Training on train images...')
